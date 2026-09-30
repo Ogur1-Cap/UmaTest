@@ -18,7 +18,7 @@ d'*Umamusume: Pretty Derby* tu ressembles le plus.
 - Le résultat = le personnage le plus proche de ton profil (distance
   euclidienne), avec les 3 suivants et la comparaison axe par axe.
 
-Tout le contenu (personnages, questions, calcul) est dans `quiz-data.js`.
+Tout tient dans le seul fichier `index.html` (personnages, questions et calcul sont dans le premier bloc `<script>`).
 Une simulation a vérifié que les 19 personnages sont atteignables.
 
 *Quiz non officiel. Umamusume: Pretty Derby © Cygames.*
