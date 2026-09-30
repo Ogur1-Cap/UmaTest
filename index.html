@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quelle Umamusume es-tu ?</title>
+<style>
+  :root {
+    --bg: #fff6fb;
+    --bg2: #eaf4ff;
+    --card: #ffffff;
+    --ink: #2a2140;
+    --muted: #6d6585;
+    --accent: #e85a9b;
+    --accent2: #3a8dde;
+    --line: #eadff0;
+    --shadow: 0 12px 40px rgba(90, 40, 120, .12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17131f; --bg2: #101a2a; --card: #221c2e; --ink: #f3eefb;
+      --muted: #a79fbd; --line: #3a3150; --shadow: 0 12px 40px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(160deg, var(--bg), var(--bg2));
+    background-attachment: fixed;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 24px 16px 48px;
+    overflow-x: hidden;
+  }
+  .app { width: 100%; max-width: 640px; position: relative; }
+  .card {
+    background: var(--card); border-radius: 24px; box-shadow: var(--shadow);
+    padding: 28px 24px; border: 1px solid var(--line);
+  }
+  h1 { font-size: clamp(1.6rem, 5vw, 2.2rem); margin: 0 0 8px; line-height: 1.15; }
+  h2 { font-size: 1.3rem; margin: 0 0 18px; line-height: 1.3; }
+  p { line-height: 1.55; }
+  .muted { color: var(--muted); }
+  .btn {
+    appearance: none; border: 0; cursor: pointer; font: inherit; font-weight: 700;
+    padding: 14px 26px; border-radius: 999px; color: #fff;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    box-shadow: 0 6px 18px rgba(232, 90, 155, .35);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(232, 90, 155, .45); }
+  .btn:active { transform: translateY(0); }
+  .btn.ghost { background: transparent; color: var(--ink); box-shadow: none; border: 2px solid var(--line); }
+
+  /* Écran d'accueil */
+  .hero-emoji { font-size: 64px; display: inline-block; animation: gallop .6s ease-in-out infinite alternate; }
+  @keyframes gallop { from { transform: translateY(0) rotate(-4deg); } to { transform: translateY(-10px) rotate(4deg); } }
+  .how { margin: 18px 0 24px; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .how li { background: var(--bg); border-radius: 12px; padding: 10px 14px; font-size: .95rem; }
+
+  /* Piste de progression */
+  .track {
+    position: relative; height: 44px; margin-bottom: 18px;
+    background: repeating-linear-gradient(90deg, #7cc57a 0 18px, #6cb86a 18px 36px);
+    border-radius: 999px; overflow: hidden; border: 3px solid #fff;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,.05);
+  }
+  .track::after { /* ligne d'arrivée */
+    content: ""; position: absolute; right: 10px; top: 0; bottom: 0; width: 10px;
+    background: repeating-linear-gradient(0deg, #fff 0 6px, #222 6px 12px);
+  }
+  .runner {
+    position: absolute; top: 50%; left: 0; font-size: 28px;
+    transform: translate(0, -50%) scaleX(-1);
+    transition: left .6s cubic-bezier(.3,1.4,.5,1);
+  }
+  .runner.moving { animation: bob .25s ease-in-out 3; }
+  @keyframes bob { 50% { margin-top: -6px; } }
+  .qcount { font-size: .85rem; font-weight: 700; color: var(--accent); letter-spacing: .05em; text-transform: uppercase; }
+
+  /* Questions */
+  .options { display: grid; gap: 12px; }
+  .opt {
+    text-align: left; font: inherit; color: var(--ink); cursor: pointer;
+    background: var(--bg); border: 2px solid var(--line); border-radius: 16px;
+    padding: 14px 16px; display: flex; gap: 12px; align-items: center;
+    transition: transform .15s ease, border-color .15s ease, background .15s ease;
+    opacity: 0; animation: pop .4s ease forwards;
+  }
+  .opt:hover { transform: translateX(6px); border-color: var(--accent); }
+  .opt:focus-visible { outline: 3px solid var(--accent2); outline-offset: 2px; }
+  .opt .key {
+    flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--card); border: 2px solid var(--line); font-weight: 800; font-size: .85rem;
+  }
+  .opt.chosen { background: var(--accent); color: #fff; border-color: var(--accent); transform: scale(1.03); }
+  .opt.chosen .key { background: #fff; color: var(--accent); border-color: #fff; }
+  @keyframes pop { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+  .screen { animation: slideIn .45s cubic-bezier(.2,.8,.2,1); }
+  .screen.leaving { animation: slideOut .3s ease forwards; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+  @keyframes slideOut { to { opacity: 0; transform: translateX(-40px); } }
+  .nav { display: flex; justify-content: space-between; margin-top: 18px; }
+  .link { background: none; border: 0; color: var(--muted); font: inherit; cursor: pointer; padding: 6px 0; }
+  .link:hover { color: var(--ink); }
+
+  /* Suspense */
+  .loading { text-align: center; padding: 60px 20px; }
+  .loading .big { font-size: 72px; display: inline-block; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Résultat */
+  .result-head { text-align: center; }
+  .medal {
+    width: 130px; height: 130px; margin: 0 auto 14px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 64px; color: #fff;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.45), transparent 60%), var(--c);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--c) 25%, transparent), 0 14px 30px rgba(0,0,0,.2);
+    animation: reveal .9s cubic-bezier(.2,1.6,.4,1) both;
+  }
+  @keyframes reveal { from { transform: scale(0) rotate(-180deg); } to { transform: none; } }
+  .result-name { font-size: clamp(1.7rem, 6vw, 2.4rem); margin: 4px 0; color: var(--c); animation: pop .5s .4s both; }
+  .tagline { font-style: italic; margin: 0 0 6px; animation: pop .5s .55s both; }
+  .match { display: inline-block; font-weight: 800; background: var(--c); color: #fff; border-radius: 999px; padding: 4px 14px; animation: pop .5s .7s both; }
+  .fade { animation: pop .5s both; }
+  .traits { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 14px 0; }
+  .traits span { border: 2px solid var(--c); color: var(--ink); border-radius: 999px; padding: 4px 12px; font-size: .9rem; font-weight: 600; }
+  .section-title { font-size: 1rem; margin: 26px 0 12px; }
+  .axis { margin-bottom: 14px; }
+  .axis-labels { display: flex; justify-content: space-between; font-size: .8rem; color: var(--muted); margin-bottom: 4px; }
+  .bar { position: relative; height: 12px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
+  .bar::before { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--line); }
+  .dot { position: absolute; top: 50%; width: 18px; height: 18px; border-radius: 50%; transform: translate(-50%, -50%); left: 50%; transition: left 1.1s cubic-bezier(.2,.8,.2,1); border: 3px solid var(--card); }
+  .dot.you { background: var(--accent2); z-index: 2; }
+  .dot.char { background: var(--c); opacity: .75; }
+  .legend { display: flex; gap: 16px; font-size: .8rem; color: var(--muted); margin-bottom: 12px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .others { display: grid; gap: 10px; }
+  .other { display: flex; align-items: center; gap: 12px; background: var(--bg); border-radius: 14px; padding: 10px 14px; }
+  .other .e { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; flex: none; }
+  .other .n { font-weight: 700; }
+  .other .p { margin-left: auto; font-weight: 800; color: var(--muted); }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 26px; }
+  .toast { text-align: center; font-size: .85rem; color: var(--muted); min-height: 1.2em; margin-top: 8px; }
+
+  /* Confettis */
+  .confetti { position: fixed; top: -20px; width: 10px; height: 16px; pointer-events: none; z-index: 10; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    .opt { opacity: 1; }
+  }
+  footer { text-align: center; font-size: .75rem; color: var(--muted); margin-top: 18px; }
+</style>
+</head>
+<body>
+<main class="app" id="app" aria-live="polite"></main>
+
+<script src="quiz-data.js"></script>
+<script>
+  const app = document.getElementById("app");
+  const LETTERS = ["A", "B", "C", "D"];
+  let answers = [];
+  let order = []; // ordre d'affichage des options, mélangé par question
+  let current = 0;
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+
+  function render(html) {
+    const old = app.firstElementChild;
+    const show = () => {
+      app.innerHTML = `<section class="screen card">${html}</section>`;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+    if (old) { old.classList.add("leaving"); setTimeout(show, 250); } else show();
+  }
+
+  function home() {
+    render(`
+      <div style="text-align:center">
+        <span class="hero-emoji" aria-hidden="true">🏇</span>
+        <h1>Quelle Umamusume es-tu ?</h1>
+        <p class="muted">14 situations, 19 personnages de <em>Umamusume: Pretty Derby</em>.</p>
+      </div>
+      <ul class="how">
+        <li>🎯 Réponds <strong>spontanément</strong> : ta première idée est souvent la plus juste.</li>
+        <li>🤝 Il n'y a <strong>pas de bonne réponse</strong> — choisis ce que tu ferais vraiment, pas ce qui serait « idéal ».</li>
+        <li>📊 Tes réponses te placent sur 5 axes de personnalité, puis on trouve l'Uma qui te ressemble le plus.</li>
+      </ul>
+      <div style="text-align:center"><button class="btn" id="start">C'est parti ! 🏁</button></div>
+    `);
+    setTimeout(() => document.getElementById("start").onclick = start, 260);
+  }
+
+  function start() {
+    answers = [];
+    order = QUESTIONS.map((q) => shuffle(q.options.map((_, i) => i)));
+    current = 0;
+    question();
+  }
+
+  function question() {
+    const q = QUESTIONS[current];
+    const total = QUESTIONS.length;
+    const prevPct = (current === 0 ? 0 : (current - 1) / total) * 88;
+    const pct = (current / total) * 88;
+    render(`
+      <div class="track" aria-hidden="true"><span class="runner moving" id="runner" style="left:${prevPct}%">🏇</span></div>
+      <div class="qcount">Question ${current + 1} / ${total}</div>
+      <h2>${q.q}</h2>
+      <div class="options">
+        ${order[current].map((oi, pos) => `
+          <button class="opt${answers[current] === oi ? " chosen" : ""}" data-i="${oi}" style="animation-delay:${.08 * pos + .1}s">
+            <span class="key">${LETTERS[pos]}</span><span>${q.options[oi].t}</span>
+          </button>`).join("")}
+      </div>
+      <div class="nav">
+        ${current > 0 ? `<button class="link" id="back">← Question précédente</button>` : `<span></span>`}
+        <span class="muted" style="font-size:.8rem">Touches A–D au clavier</span>
+      </div>
+    `);
+    setTimeout(() => {
+      const runner = document.getElementById("runner");
+      requestAnimationFrame(() => { runner.style.left = pct + "%"; });
+      app.querySelectorAll(".opt").forEach((b) => b.onclick = () => choose(+b.dataset.i, b));
+      const back = document.getElementById("back");
+      if (back) back.onclick = () => { current--; question(); };
+    }, 260);
+  }
+
+  let locked = false;
+  function choose(i, btn) {
+    if (locked) return;
+    locked = true;
+    btn.classList.add("chosen");
+    answers[current] = i;
+    setTimeout(() => {
+      locked = false;
+      current++;
+      if (current < QUESTIONS.length) question(); else suspense();
+    }, 380);
+  }
+
+  document.addEventListener("keydown", (e) => {
+    const pos = LETTERS.indexOf(e.key.toUpperCase());
+    if (pos < 0) return;
+    const btn = app.querySelectorAll(".opt")[pos];
+    if (btn) btn.click();
+  });
+
+  function suspense() {
+    render(`<div class="loading"><span class="big">🏆</span><h2>Analyse de ta foulée…</h2><p class="muted">Les dresseurs délibèrent</p></div>`);
+    setTimeout(result, 1800);
+  }
+
+  const toPct = (v) => ((v + 2) / 4) * 100;
+
+  function result() {
+    const { user, ranking } = computeResult(answers);
+    const best = ranking[0];
+    const c = best.character;
+    render(`
+      <div style="--c:${c.color}">
+        <div class="result-head">
+          <p class="muted" style="margin:0 0 10px">Tu es…</p>
+          <div class="medal" aria-hidden="true">${c.emoji}</div>
+          <h1 class="result-name">${c.name}</h1>
+          <p class="tagline">${c.tagline}</p>
+          <span class="match">${best.match}% de compatibilité</span>
+        </div>
+        <p class="fade" style="animation-delay:.85s">${c.desc}</p>
+        <div class="traits fade" style="animation-delay:1s">${c.traits.map((t) => `<span>${t}</span>`).join("")}</div>
+
+        <h3 class="section-title fade" style="animation-delay:1.1s">Ton profil vs ${c.name}</h3>
+        <div class="legend fade" style="animation-delay:1.1s"><span><i style="background:var(--accent2)"></i>Toi</span><span><i style="background:${c.color}"></i>${c.name}</span></div>
+        ${AXES.map((a) => `
+          <div class="axis fade" style="animation-delay:1.2s">
+            <div class="axis-labels"><span>${a.low}</span><span>${a.high}</span></div>
+            <div class="bar">
+              <span class="dot char" data-to="${toPct(c.profile[a.key])}"></span>
+              <span class="dot you" data-to="${toPct(user[a.key])}"></span>
+            </div>
+          </div>`).join("")}
+
+        <h3 class="section-title">Tu as aussi un peu de…</h3>
+        <div class="others">
+          ${ranking.slice(1, 4).map((r) => `
+            <div class="other">
+              <span class="e" style="background:${r.character.color}33">${r.character.emoji}</span>
+              <span><span class="n">${r.character.name}</span><br><span class="muted" style="font-size:.85rem">${r.character.tagline}</span></span>
+              <span class="p">${r.match}%</span>
+            </div>`).join("")}
+        </div>
+
+        <div class="actions">
+          <button class="btn" id="share">Partager mon résultat</button>
+          <button class="btn ghost" id="again">Recommencer</button>
+        </div>
+        <div class="toast" id="toast"></div>
+      </div>
+    `);
+    setTimeout(() => {
+      app.querySelectorAll(".dot").forEach((d, i) => setTimeout(() => d.style.left = d.dataset.to + "%", 1200 + i * 60));
+      document.getElementById("again").onclick = home;
+      document.getElementById("share").onclick = () => share(c, best.match);
+      confetti(c.color);
+    }, 260);
+  }
+
+  async function share(c, match) {
+    const text = `Je suis ${c.name} ${c.emoji} (${match}% de compatibilité) — « ${c.tagline} ». Et toi, quelle Umamusume es-tu ?`;
+    const toast = document.getElementById("toast");
+    try {
+      if (navigator.share) await navigator.share({ text, url: location.href });
+      else { await navigator.clipboard.writeText(text + " " + location.href); toast.textContent = "Copié dans le presse-papier ✔"; }
+    } catch { toast.textContent = text; }
+  }
+
+  function confetti(color) {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const colors = [color, "#e85a9b", "#3a8dde", "#ffd24a", "#7cc57a"];
+    for (let i = 0; i < 90; i++) {
+      const el = document.createElement("span");
+      el.className = "confetti";
+      el.style.left = Math.random() * 100 + "vw";
+      el.style.background = colors[i % colors.length];
+      el.style.animationDuration = 2 + Math.random() * 2.5 + "s";
+      el.style.animationDelay = Math.random() * .6 + "s";
+      el.style.borderRadius = Math.random() < .5 ? "50%" : "2px";
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 5500);
+    }
+  }
+
+  home();
+</script>
+<footer class="app">Quiz de fan non officiel · Umamusume: Pretty Derby © Cygames</footer>
+</body>
+</html>

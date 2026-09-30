@@ -1,0 +1,378 @@
+// Données du quiz « Quelle Umamusume es-tu ? »
+//
+// Modèle : 5 axes de personnalité, notés de -2 à +2.
+//   E  Énergie sociale   (-2 réservé·e      → +2 extraverti·e)
+//   D  Discipline        (-2 spontané·e     → +2 rigoureux·se)
+//   A  Esprit de compét. (-2 pour le plaisir → +2 veut gagner)
+//   C  Confiance en soi  (-2 doute          → +2 assurance)
+//   X  Excentricité      (-2 classique      → +2 décalé·e)
+//
+// Chaque réponse déplace le joueur sur 1 à 3 axes. À la fin, on cherche
+// le personnage dont le profil est le plus proche (distance euclidienne).
+
+const AXES = [
+  { key: "E", low: "Réservé·e", high: "Extraverti·e" },
+  { key: "D", low: "Spontané·e", high: "Rigoureux·se" },
+  { key: "A", low: "Pour le plaisir", high: "Compétiteur·rice" },
+  { key: "C", low: "En doute", high: "Sûr·e de soi" },
+  { key: "X", low: "Classique", high: "Excentrique" },
+];
+
+const CHARACTERS = [
+  {
+    id: "special-week",
+    name: "Special Week",
+    emoji: "🍙",
+    color: "#e85a9b",
+    tagline: "La débutante au grand cœur",
+    profile: { E: 1, D: 1, A: 1, C: 0, X: 0 },
+    desc: "Venue de la campagne d'Hokkaido avec la promesse de devenir la meilleure Uma du Japon, Special Week est sincère, travailleuse et incroyablement attachante. Elle doute parfois, mais elle se relève toujours — et son appétit est légendaire.",
+    traits: ["Sincère", "Persévérante", "Gourmande", "Loyale"],
+  },
+  {
+    id: "silence-suzuka",
+    name: "Silence Suzuka",
+    emoji: "🍃",
+    color: "#3fa56b",
+    tagline: "Celle qui court devant, seule avec le vent",
+    profile: { E: -2, D: 0, A: -1, C: 1, X: 0 },
+    desc: "Calme, un peu distante, Suzuka ne court pas pour battre les autres mais pour voir « le paysage que personne d'autre ne voit » en tête de course. Elle suit son propre rythme et n'aime pas qu'on lui impose une façon de faire.",
+    traits: ["Calme", "Indépendante", "Libre", "Intense en silence"],
+  },
+  {
+    id: "tokai-teio",
+    name: "Tokai Teio",
+    emoji: "👑",
+    color: "#2f6fe0",
+    tagline: "L'invincible au sourire espiègle",
+    profile: { E: 2, D: -1, A: 2, C: 2, X: 0 },
+    desc: "Pleine d'assurance et de malice, Teio rêve de devenir invaincue comme son idole Symboli Rudolf. Elle adore être au centre de l'attention, taquine tout le monde… et cache une volonté de fer qui ressort dans l'adversité.",
+    traits: ["Charismatique", "Espiègle", "Ambitieuse", "Résiliente"],
+  },
+  {
+    id: "mejiro-mcqueen",
+    name: "Mejiro McQueen",
+    emoji: "🍰",
+    color: "#8a6bd1",
+    tagline: "L'aristocrate (qui craque pour les desserts)",
+    profile: { E: 0, D: 2, A: 1, C: 1, X: -1 },
+    desc: "Héritière de la prestigieuse famille Mejiro, McQueen est élégante, polie et porte fièrement l'honneur de son nom. Rigoureuse jusqu'au bout des sabots… sauf devant une pâtisserie ou un match de baseball.",
+    traits: ["Élégante", "Fière", "Rigoureuse", "Gourmande en secret"],
+  },
+  {
+    id: "gold-ship",
+    name: "Gold Ship",
+    emoji: "🚀",
+    color: "#c9a227",
+    tagline: "Le chaos incarné",
+    profile: { E: 2, D: -2, A: -1, C: 2, X: 2 },
+    desc: "Personne ne sait ce que Gold Ship va faire ensuite — pas même elle. Kidnappings de dresseurs, drop-kicks, idées absurdes : elle vit selon sa propre logique. Mais quand elle décide de courir sérieusement, elle est redoutable.",
+    traits: ["Imprévisible", "Drôle", "Libre", "Imperturbable"],
+  },
+  {
+    id: "vodka",
+    name: "Vodka",
+    emoji: "🏍️",
+    color: "#2b2b3a",
+    tagline: "La cool attitude avant tout",
+    profile: { E: 1, D: -1, A: 2, C: 1, X: 0 },
+    desc: "Vodka veut être « cool », style rebelle et moto — même si elle rougit dès qu'une scène devient romantique. Rivale éternelle de Daiwa Scarlet, elle fonce à l'instinct et refuse de perdre.",
+    traits: ["Instinctive", "Fonceuse", "Rivale acharnée", "Cœur tendre caché"],
+  },
+  {
+    id: "daiwa-scarlet",
+    name: "Daiwa Scarlet",
+    emoji: "🥇",
+    color: "#d8323c",
+    tagline: "Numéro 1, sinon rien",
+    profile: { E: 1, D: 2, A: 2, C: 0, X: -1 },
+    desc: "Perfectionniste, Scarlet veut être la première partout et soigne son image d'élève modèle. Derrière cette façade, elle travaille plus que tout le monde et supporte mal de perdre — surtout contre Vodka.",
+    traits: ["Perfectionniste", "Travailleuse", "Fière", "Compétitive"],
+  },
+  {
+    id: "oguri-cap",
+    name: "Oguri Cap",
+    emoji: "🍚",
+    color: "#7d8a99",
+    tagline: "Le monstre gris, calme et affamé",
+    profile: { E: -1, D: 0, A: 1, C: 1, X: 1 },
+    desc: "Venue d'une petite piste de province, Oguri est simple, un peu lunaire et dotée d'un appétit sans fond. Peu bavarde, elle impressionne par une puissance tranquille et une humilité sincère.",
+    traits: ["Humble", "Lunaire", "Puissante", "Gloutonne"],
+  },
+  {
+    id: "symboli-rudolf",
+    name: "Symboli Rudolf",
+    emoji: "🦁",
+    color: "#1f5a3d",
+    tagline: "L'empereur (qui adore les jeux de mots)",
+    profile: { E: 1, D: 2, A: 1, C: 2, X: -1 },
+    desc: "Présidente du conseil des élèves, Rudolf est une leader née : posée, juste et visionnaire. Elle rêve d'un monde où toutes les Uma peuvent être heureuses… et glisse des jeux de mots douteux quand on s'y attend le moins.",
+    traits: ["Leader", "Juste", "Stratège", "Humour de tonton"],
+  },
+  {
+    id: "rice-shower",
+    name: "Rice Shower",
+    emoji: "🌹",
+    color: "#5b3a8c",
+    tagline: "La petite rose qui veut apporter le bonheur",
+    profile: { E: -2, D: 1, A: 0, C: -2, X: -1 },
+    desc: "Timide et persuadée de porter malheur, Rice rêve pourtant d'être celle qui rend les autres heureux. Sous sa fragilité se cache une détermination impressionnante quand elle se fixe un objectif.",
+    traits: ["Timide", "Bienveillante", "Déterminée", "Sensible"],
+  },
+  {
+    id: "haru-urara",
+    name: "Haru Urara",
+    emoji: "🌸",
+    color: "#ff8fb1",
+    tagline: "Le sourire qui ne s'éteint jamais",
+    profile: { E: 2, D: -2, A: -2, C: 1, X: 1 },
+    desc: "Haru Urara n'a (presque) jamais gagné, et ça ne l'empêche pas d'aimer la course de tout son cœur. Joyeuse, naïve et contagieuse, elle rappelle à tout le monde pourquoi on court : pour le plaisir.",
+    traits: ["Optimiste", "Joyeuse", "Naïve", "Inarrêtable"],
+  },
+  {
+    id: "agnes-tachyon",
+    name: "Agnes Tachyon",
+    emoji: "🧪",
+    color: "#e0a526",
+    tagline: "La scientifique folle",
+    profile: { E: 0, D: -1, A: -1, C: 2, X: 2 },
+    desc: "Tachyon s'intéresse moins à la victoire qu'aux limites du corps d'une Uma. Elle expérimente (sur elle-même ou sur son dresseur…), vit dans un labo en désordre et a toujours une potion douteuse à proposer.",
+    traits: ["Curieuse", "Géniale", "Désordonnée", "Sans filtre"],
+  },
+  {
+    id: "twin-turbo",
+    name: "Twin Turbo",
+    emoji: "💨",
+    color: "#1aa3c4",
+    tagline: "Pleins gaz dès le départ !",
+    profile: { E: 2, D: -2, A: 2, C: 0, X: 1 },
+    desc: "Turbo n'a qu'une stratégie : partir à fond et ne jamais ralentir. Bruyante, impulsive et un brin tête en l'air, elle compense tout par une énergie débordante et un courage sans limites.",
+    traits: ["Impulsive", "Courageuse", "Bruyante", "Tout ou rien"],
+  },
+  {
+    id: "matikanefukukitaru",
+    name: "Matikanefukukitaru",
+    emoji: "🔮",
+    color: "#9b59b6",
+    tagline: "La voyante porte-bonheur",
+    profile: { E: 1, D: -1, A: -1, C: -1, X: 2 },
+    desc: "Fukukitaru consulte les présages pour tout : horoscope, gri-gri, rituels divers. Attachante et un peu anxieuse, elle s'en remet à la chance… alors qu'elle a plus de talent qu'elle ne le croit.",
+    traits: ["Superstitieuse", "Enjouée", "Anxieuse", "Attachante"],
+  },
+  {
+    id: "nice-nature",
+    name: "Nice Nature",
+    emoji: "🥉",
+    color: "#c9803a",
+    tagline: "La reine (auto-proclamée) de la 3e place",
+    profile: { E: 0, D: 0, A: -1, C: -2, X: -1 },
+    desc: "Lucide, un brin désabusée, Nature se voit comme « l'éternelle figurante » face aux stars. Mais elle est drôle, attentionnée, très appréciée des enfants du quartier — et bien plus forte qu'elle ne l'admet.",
+    traits: ["Réaliste", "Autodérision", "Attentionnée", "Sous-estimée"],
+  },
+  {
+    id: "grass-wonder",
+    name: "Grass Wonder",
+    emoji: "🍵",
+    color: "#4d8f5a",
+    tagline: "La douceur qui cache une lame",
+    profile: { E: -1, D: 2, A: 1, C: 1, X: -2 },
+    desc: "Passionnée par la culture japonaise traditionnelle, Grass est douce, polie et d'un calme absolu. Mais sur la piste, son esprit de guerrière se réveille — et mieux vaut ne pas la mettre en colère.",
+    traits: ["Sereine", "Traditionnelle", "Polie", "Féroce en course"],
+  },
+  {
+    id: "el-condor-pasa",
+    name: "El Condor Pasa",
+    emoji: "🦅",
+    color: "#e74c3c",
+    tagline: "La catcheuse masquée venue d'ailleurs",
+    profile: { E: 2, D: 0, A: 2, C: 2, X: 2 },
+    desc: "Masque de lucha libre vissé sur la tête, El Condor Pasa vise le sommet du monde et le fait savoir haut et fort. Théâtrale et fière, elle est aussi une amie fidèle, surtout pour Grass Wonder.",
+    traits: ["Théâtrale", "Ambitieuse", "Extravertie", "Fidèle"],
+  },
+  {
+    id: "mihono-bourbon",
+    name: "Mihono Bourbon",
+    emoji: "🤖",
+    color: "#4a6fa5",
+    tagline: "Le cyborg qui s'entraîne sans fin",
+    profile: { E: -2, D: 2, A: 1, C: 0, X: 1 },
+    desc: "Bourbon parle comme une machine, répond en « rapports d'état » et exécute ses entraînements avec une discipline absolue. Pas taillée pour les longues distances ? Elle compte bien prouver le contraire, séance après séance.",
+    traits: ["Méthodique", "Stoïque", "Travailleuse", "Décalée"],
+  },
+  {
+    id: "kitasan-black",
+    name: "Kitasan Black",
+    emoji: "🎉",
+    color: "#333333",
+    tagline: "L'esprit de fête et d'entraide",
+    profile: { E: 2, D: 1, A: 0, C: 1, X: -1 },
+    desc: "Fille d'une famille liée au festival et à l'enka, Kitasan est énergique, serviable et toujours prête à donner un coup de main. Elle voit la course comme un moyen de faire sourire les gens.",
+    traits: ["Serviable", "Énergique", "Chaleureuse", "Populaire"],
+  },
+];
+
+// Questions en situation : pas de « bonne » réponse, chaque option
+// reflète un comportement concret plutôt qu'un adjectif flatteur.
+const QUESTIONS = [
+  {
+    q: "Samedi, aucun plan. Tu fais quoi ?",
+    options: [
+      { t: "J'envoie un message au groupe pour organiser une sortie", e: { E: 2 } },
+      { t: "Je pars marcher ou courir, seul·e, sans destination", e: { E: -2, D: -1 } },
+      { t: "J'avance sur mes projets, selon mon planning", e: { D: 2, A: 1 } },
+      { t: "Je teste un truc improbable vu sur internet", e: { X: 2, D: -1 } },
+    ],
+  },
+  {
+    q: "La veille d'un grand examen (ou d'une course importante)…",
+    options: [
+      { t: "Révision méthodique, puis au lit à 22 h", e: { D: 2 } },
+      { t: "Je visualise déjà ma victoire", e: { C: 2, A: 1 } },
+      { t: "Je stresse et je doute de tout", e: { C: -2 } },
+      { t: "Pas de pression : on verra bien demain", e: { A: -2, D: -1 } },
+    ],
+  },
+  {
+    q: "Dans un travail de groupe, tu es plutôt…",
+    options: [
+      { t: "Celui ou celle qui fixe le cap et répartit les tâches", e: { E: 1, C: 1, D: 1 } },
+      { t: "Le moteur de l'ambiance", e: { E: 2, A: -1 } },
+      { t: "Celui ou celle qui sort l'idée complètement folle", e: { X: 2 } },
+      { t: "Discret·e, mais on peut toujours compter sur toi", e: { E: -1, D: 1, C: -1 } },
+    ],
+  },
+  {
+    q: "Ton rival vient de te battre. Première réaction ?",
+    options: [
+      { t: "« Revanche. Tout de suite. »", e: { A: 2, E: 1 } },
+      { t: "J'analyse froidement ce qui n'a pas marché", e: { D: 2, E: -1 } },
+      { t: "Je le félicite, c'était un super moment", e: { A: -2 } },
+      { t: "Je me demande si je suis vraiment fait·e pour ça", e: { C: -2 } },
+    ],
+  },
+  {
+    q: "Ton repas réconfort idéal ?",
+    options: [
+      { t: "Une montagne de riz. La quantité avant tout", e: { X: 1, D: -1 } },
+      { t: "Une pâtisserie raffinée dans un salon de thé", e: { D: 1, X: -1 } },
+      { t: "Un plat traditionnel, comme à la maison", e: { X: -2 } },
+      { t: "Un mélange bizarre que personne d'autre n'oserait goûter", e: { X: 2 } },
+    ],
+  },
+  {
+    q: "Sur la ligne de départ, ta stratégie :",
+    options: [
+      { t: "Prendre la tête et ne jamais regarder derrière", e: { C: 1, E: -1 } },
+      { t: "Rester placé·e et attaquer au moment parfait", e: { D: 2 } },
+      { t: "Tout donner dès le départ, advienne que pourra !", e: { D: -2, A: 1, E: 1 } },
+      { t: "Courir pour le plaisir et profiter du paysage", e: { A: -2 } },
+    ],
+  },
+  {
+    q: "Horoscope, porte-bonheur, rituels… tu en penses quoi ?",
+    options: [
+      { t: "J'y crois à fond, j'ai mes gri-gri", e: { X: 2, C: -1 } },
+      { t: "Inutile : je crois en moi, point", e: { C: 2 } },
+      { t: "Intéressant… à tester scientifiquement", e: { X: 1, E: -1 } },
+      { t: "Pas vraiment, mais ça me rassure un peu", e: { C: -1, X: -1 } },
+    ],
+  },
+  {
+    q: "Quelqu'un te demande de l'aide alors que tu es débordé·e :",
+    options: [
+      { t: "Je lâche tout pour l'aider", e: { A: -1, E: 1 } },
+      { t: "Je termine d'abord ce que je fais, puis j'aide", e: { D: 2 } },
+      { t: "Je l'aide… et j'en profite pour lui demander un service", e: { A: 1, C: 1 } },
+      { t: "J'aide, mais je doute d'être vraiment utile", e: { C: -2 } },
+    ],
+  },
+  {
+    q: "Ton rapport aux règles ?",
+    options: [
+      { t: "Elles existent pour une bonne raison", e: { D: 2, X: -1 } },
+      { t: "Je les connais… pour mieux les contourner", e: { D: -1, C: 1 } },
+      { t: "Des règles ? Quelles règles ?", e: { D: -2, X: 2 } },
+      { t: "Je les applique et je les fais appliquer", e: { D: 1, E: 1, C: 1 } },
+    ],
+  },
+  {
+    q: "En soirée, on te trouve…",
+    options: [
+      { t: "Au centre de l'attention", e: { E: 2, C: 1 } },
+      { t: "Dans un coin calme avec une ou deux personnes", e: { E: -2 } },
+      { t: "En train de faire des blagues (parfois nulles)", e: { E: 1, X: 1 } },
+      { t: "En train d'observer tout le monde, c'est fascinant", e: { X: 1, E: -1 } },
+    ],
+  },
+  {
+    q: "Ton rêve ultime ?",
+    options: [
+      { t: "Être n°1. Invaincu·e.", e: { A: 2, C: 1 } },
+      { t: "Rendre fiers ceux qui croient en moi", e: { A: 1, E: 1 } },
+      { t: "Découvrir jusqu'où je peux vraiment aller", e: { X: 1, D: 1 } },
+      { t: "Être heureux·se chaque jour, tout simplement", e: { A: -2, C: 1 } },
+    ],
+  },
+  {
+    q: "On te fait un compliment sincère. Tu…",
+    options: [
+      { t: "Je sais, merci !", e: { C: 2 } },
+      { t: "Rougis et ne sais plus où te mettre", e: { C: -2, E: -1 } },
+      { t: "Retournes immédiatement le compliment", e: { E: 1, A: -1 } },
+      { t: "T'en sers comme carburant pour faire encore mieux", e: { A: 1, D: 1 } },
+    ],
+  },
+  {
+    q: "Ton style vestimentaire ?",
+    options: [
+      { t: "Classique et impeccable", e: { X: -2, D: 1 } },
+      { t: "Confortable avant tout", e: { D: -1, A: -1 } },
+      { t: "Voyant : costume, cape… voire un masque", e: { X: 2, E: 1 } },
+      { t: "Sobre et cool : noir, cuir, lunettes", e: { C: 1, E: -1 } },
+    ],
+  },
+  {
+    q: "Un imprévu fait tomber ton plan à l'eau :",
+    options: [
+      { t: "J'improvise, c'est même plus drôle comme ça", e: { D: -2, C: 1 } },
+      { t: "J'ai toujours un plan B (et un plan C)", e: { D: 2 } },
+      { t: "Je le vis mal, j'ai besoin d'un moment", e: { C: -1, E: -1 } },
+      { t: "C'était un signe du destin", e: { X: 2, A: -1 } },
+    ],
+  },
+];
+
+
+
+// Calcule le profil du joueur (axes ramenés sur -2..+2) et le classement
+// des personnages. `answers` = index de l'option choisie pour chaque question.
+function computeResult(answers) {
+  const raw = {}, maxPos = {}, maxNeg = {};
+  AXES.forEach(({ key }) => { raw[key] = 0; maxPos[key] = 0; maxNeg[key] = 0; });
+  QUESTIONS.forEach((question, i) => {
+    AXES.forEach(({ key }) => {
+      const vals = question.options.map((o) => o.e[key] || 0);
+      maxPos[key] += Math.max(0, ...vals);
+      maxNeg[key] += Math.max(0, ...vals.map((v) => -v));
+    });
+    const chosen = question.options[answers[i]];
+    if (chosen) Object.entries(chosen.e).forEach(([k, v]) => { raw[k] += v; });
+  });
+  // Personne ne répond « à fond » partout : on atteint ±2 dès 35 %
+  // du score maximal possible sur un axe.
+  const SPREAD = 0.35;
+  const user = {};
+  AXES.forEach(({ key }) => {
+    const r = raw[key];
+    const ref = (r >= 0 ? maxPos[key] : maxNeg[key]) * SPREAD || 1;
+    user[key] = Math.max(-2, Math.min(2, (2 * r) / ref));
+  });
+  const maxDist = Math.sqrt(AXES.length * 16);
+  const ranking = CHARACTERS.map((c) => {
+    const d = Math.sqrt(AXES.reduce((s, { key }) => s + (user[key] - c.profile[key]) ** 2, 0));
+    return { character: c, match: Math.round(100 * (1 - d / maxDist)) , dist: d };
+  }).sort((a, b) => a.dist - b.dist);
+  return { user, ranking };
+}
+
+if (typeof module !== "undefined") module.exports = { AXES, CHARACTERS, QUESTIONS, computeResult };
